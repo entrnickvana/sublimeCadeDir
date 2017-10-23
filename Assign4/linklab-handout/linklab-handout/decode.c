@@ -84,7 +84,7 @@ void decode(instruction_t *ins, code_t *code_ptr, Elf64_Addr code_addr)
     ins->length += 3;
     if (MODRM_MOD(code_ptr[2]) != 3) {
       if (MODRM_MOD(code_ptr[2]) == 1)
-	ins->length += 2;
+	ins->length += 1;
       else if (MODRM_MOD(code_ptr[2]) == 2)
 	ins->length += 4;
       if (MODRM_RM(code_ptr[2]) == 4)
@@ -160,6 +160,14 @@ void decode(instruction_t *ins, code_t *code_ptr, Elf64_Addr code_addr)
     ins->op = JMP_TO_ADDR_OP;
     ins->length += 1 + dp;
     ins->jmp_to_addr.addr = code_addr + 1 + dp + rel_addr;
+    return;
+  }
+
+  if ((code_ptr[0] >= 0x90)
+      && (code_ptr[0] <= 0x98)) {
+    /* xchg */
+    ins->op = OTHER_OP;
+    ins->length++;
     return;
   }
 
