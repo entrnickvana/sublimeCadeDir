@@ -8,29 +8,27 @@
 #include <errno.h>
 #include <string.h>
 #include <elf.h>
+#include "decode.h"
 
 /* Given the in-memory ELF header pointer as `ehdr` and a section
    header pointer as `shdr`, returns a pointer to the memory that
    contains the in-memory content of the section */
 #define AT_SEC(ehdr, shdr) ((void *)(ehdr) + (shdr)->sh_offset)
 
-
-#define DEBUG 1
-
-#ifdef DEBUG
-#define DEBUG_PRINT(x) printf x
-#else
-#define DEBUG_PRINT(x) do {} while(0)
-#endif
-
 static int get_secrecy_level(const char *s); /* foward declaration */
-void printSectionNames(Elf64_Ehdr *ehder);
-void printSectionNamesFromArray(Elf64_Ehdr* ehdr, char* sectNamePtrs[]);
-void getSectionBaseAddrss(Elf64_Ehdr* ehdr, char* sectNamePtrs[]);
-void getSectPtr(Elf64_Ehdr* ehdr, char* nameOfSection, char* names[], Elf64_Shdr* out);
+
+void print_symbols(Elf64_Ehdr* ehdr);
 Elf64_Shdr* section_by_name(Elf64_Ehdr* ehdr, char* section_header_name);
+Elf64_Shdr* section_by_index(Elf64_Ehdr* ehdr, int index);
 void print_dynsym_names(Elf64_Ehdr* ehdr);
-void print_sym_names(Elf64_Ehdr* ehdr);
+Elf64_Sym* sym_by_name(Elf64_Ehdr* ehdr, char* symName, char* symSection);
+//Elf64_Sym* sym_by_name(Elf64_Ehdr* ehdr, char* symName);
+Elf64_Sym* sym_by_index(Elf64_Ehdr* ehdr, int index, char* nameOfSymSection);
+//Elf64_Sym* sym_by_index(Elf64_Ehdr* ehdr, int index);
+int map_dynsym_to_shndx(Elf64_Ehdr* ehdr,  int symbolIndex, char* nameOfSymSection);
+//int map_dynsym_to_shndx(Elf64_Ehdr* ehdr,  int symbolIndex);
+void printSectionHeaderNames(Elf64_Ehdr* ehdr);
+unsigned char* getMachineCodeOfSymbol(Elf64_Ehdr* ehdr, int symbol_index, char* nameOfSymSection);
 
 /*************************************************************/
 
@@ -38,12 +36,156 @@ void redact(Elf64_Ehdr *ehdr) {
   /* Your work starts here --- but add helper functions that you call
      from here, instead of trying to put all the work in one
      function. */
-  printf("1     ##############################\n");
-  print_dynsym_names(ehdr);
-  printf("2     #############################################################################\n");
-  print_sym_names(ehdr);
 
 
+
+   Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
+      int m, sym_arr_size = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+
+      unsigned char* tempChar;
+      for (m = 0; m < sym_arr_size; m++) 
+      {
+        printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        M: %d\n", m);
+
+          tempChar = getMachineCodeOfSymbol(ehdr, m, ".dynsym");
+
+          if(tempChar != NULL)
+            printf("Your byte from main: %02hhx\n\n", *tempChar);
+
+      }
+
+}
+
+
+unsigned char* getMachineCodeOfSymbol(Elf64_Ehdr* ehdr, int symbol_index, char* nameOfSymSection)
+{
+
+        Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, nameOfSymSection);
+//        int m = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+        Elf64_Shdr* shdrs = (void*)ehdr+ehdr->e_shoff;
+
+        unsigned char* code_ptr = 0;
+
+        int j = 0;
+
+        Elf64_Sym* Syms = (void*)ehdr + dynsym_shdr->sh_offset;
+
+
+        if(ELF64_ST_TYPE(Syms[symbol_index].st_info) == STT_FUNC)
+        {
+            printf("Is a Function!\n");
+                
+            j = map_dynsym_to_shndx(ehdr, symbol_index, nameOfSymSection);
+            printf("M:\t%d  j:\t%d  \n",symbol_index, j );
+
+            code_ptr = AT_SEC(ehdr, shdrs + j) + ((Syms[symbol_index].st_value)-(shdrs[j].sh_addr));
+
+            printf(".text Byte: %02hhx\n", *code_ptr);
+
+            // Print the first bytes of machine code
+            int g;
+            for (g = 0; g < 10; ++g)
+            {
+                printf("%02hhx ", *(code_ptr + g));
+            }
+
+            printf("\n");
+
+            return code_ptr;
+
+        }else
+        {
+            printf(" ######   Not a Function!   #######\n");
+            j = map_dynsym_to_shndx(ehdr, symbol_index, nameOfSymSection);
+            printf("\nM:\t%d  j:\t%d  \n",symbol_index, j );
+
+            return NULL;
+
+        }
+
+
+}
+
+
+
+int map_dynsym_to_shndx(Elf64_Ehdr* ehdr,  int symbolIndex, char* nameOfSymSection)
+{
+  Elf64_Sym* sym = sym_by_index(ehdr, symbolIndex, nameOfSymSection);
+  int sym_shndx = sym->st_shndx;
+  Elf64_Shdr *shdrs = (void*)ehdr+ehdr->e_shoff;
+  char *strs = (void*)ehdr+shdrs[ehdr->e_shstrndx].sh_offset; 
+
+  //printf("Sym Section Header Index: %d\n", sym_shndx);
+
+  printf("Sym shndx corresponds to section: %s\n", strs + section_by_index(ehdr, sym_shndx)->sh_name); 
+
+  return   sym_shndx; 
+
+}
+
+Elf64_Sym* sym_by_index(Elf64_Ehdr* ehdr, int index, char* nameOfSymSection)
+{
+      unsigned char* strs;
+
+      Elf64_Sym *syms;
+
+      Elf64_Shdr* dynsym_shdr;
+
+      if(strcmp(nameOfSymSection, ".dynsym") == 0)
+      {
+        dynsym_shdr = section_by_name(ehdr, ".dynsym");
+
+        syms = AT_SEC(ehdr, dynsym_shdr);
+        strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));
+
+      }
+      else
+      {
+        dynsym_shdr = section_by_name(ehdr, ".symtab");
+
+        syms = AT_SEC(ehdr, dynsym_shdr);
+        strs = AT_SEC(ehdr, section_by_name(ehdr, ".strtab"));
+
+      }
+
+      printf("%s\n", strs + syms[index].st_name);
+      return &syms[index];
+}
+
+
+Elf64_Sym* sym_by_name(Elf64_Ehdr* ehdr, char* symName, char* symSection)
+{
+
+  Elf64_Shdr *dynsym_shdr;
+  Elf64_Sym *syms;
+  char *strs;
+
+  if(strcmp(symSection, ".dynsym") == 0)
+  {
+      dynsym_shdr = section_by_name(ehdr, ".dynsym");
+      syms = AT_SEC(ehdr, dynsym_shdr);
+      strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));      
+  }else
+  {
+      dynsym_shdr = section_by_name(ehdr, ".symtab");
+      syms = AT_SEC(ehdr, dynsym_shdr);
+      strs = AT_SEC(ehdr, section_by_name(ehdr, ".strtab"));
+  }
+        int i, count = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+
+      int sym_index = 0;
+      for (i = 0; i < count; i++) 
+      {
+        if(strcmp(strs + syms[i].st_name, symName) == 0)
+        { 
+          //printf("%s\n", strs + syms[i].st_name);
+          //printf("####\n\n\n");
+          sym_index = i;
+        } 
+
+      }
+
+      return &syms[sym_index];
 }
 
 void print_dynsym_names(Elf64_Ehdr* ehdr)
@@ -60,41 +202,45 @@ void print_dynsym_names(Elf64_Ehdr* ehdr)
 }
 
 
-void print_sym_names(Elf64_Ehdr* ehdr)
+Elf64_Shdr* section_by_index(Elf64_Ehdr* ehdr, int index)
 {
-      Elf64_Shdr *sym_shdr = section_by_name(ehdr, ".symtab");
-      Elf64_Sym *syms = AT_SEC(ehdr, sym_shdr);
-      char *strs = AT_SEC(ehdr, section_by_name(ehdr, ".strtab"));
-      int i, count = sym_shdr->sh_size / sizeof(Elf64_Sym);
+    Elf64_Shdr* shdrs = (void*)ehdr+ehdr->e_shoff;
+    Elf64_Shdr* desiredSectionHeader = (shdrs + index);
 
-      for (i = 0; i < count; i++) 
-      {
-        printf("%s\n", strs + syms[i].st_name);
-      }
+    return desiredSectionHeader;
 }
+
 
 Elf64_Shdr* section_by_name(Elf64_Ehdr* ehdr, char* section_header_name)
 {
 
     Elf64_Shdr *shdrs = (void*)ehdr+ehdr->e_shoff;
     char *strs = (void*)ehdr+shdrs[ehdr->e_shstrndx].sh_offset;
-    Elf64_Shdr* desiredSection;
+    Elf64_Shdr* desiredSection = NULL;
 
     int i;
-    int index_of_desired_section = 0;
+
+      /*  Shouldnt' be needed*/
+//    int index_of_desired_section = 0;
+
     for (i = 0; i < ehdr->e_shnum; i++) {
-      printf("%s\n", strs + shdrs[i].sh_name);
+      //printf("%s\n", strs + shdrs[i].sh_name);
 
         if( strcmp(strs + shdrs[i].sh_name, section_header_name) == 0 )
         {
            desiredSection =  &shdrs[i];
-           index_of_desired_section = i;
-           printf("%s\n", strs + shdrs[i].sh_name);           
+
+                 /*  Shouldnt' be needed*/
+  //         index_of_desired_section = i;
+ //          printf("%s\n", strs + shdrs[i].sh_name);           
         }
     }
-      
-      void* result;
-      result = AT_SEC(ehdr, desiredSection);
+  
+
+        /*  Should not be needed  */    
+//      void* result;
+//      result = AT_SEC(ehdr, desiredSection);
+      /*
       printf("\n\nYour Desired Section is located at:\t%p\nWhich point to:\t\t\t%p\t(ehdr + desiredSection->sh_offset\n  Name: \t\t\t%s\n Index: \t\t\t%d\n AT_SEC:  \t\t\t%p\n", 
                 desiredSection,
                 (void*)ehdr + (desiredSection->sh_offset),
@@ -102,11 +248,10 @@ Elf64_Shdr* section_by_name(Elf64_Ehdr* ehdr, char* section_header_name)
                 index_of_desired_section,
                 result
               );
-
+      */
       return desiredSection;
 
 }
-
 
 void printSectionHeaderNames(Elf64_Ehdr* ehdr)
 {
@@ -118,122 +263,6 @@ void printSectionHeaderNames(Elf64_Ehdr* ehdr)
     for (i = 0; i < ehdr->e_shnum; i++) {
       printf("%s\n", strs + shdrs[i].sh_name);
     }
-
-}
-
-
-void getSectPtr(Elf64_Ehdr* ehdr, char* nameOfSection, char* names[], Elf64_Shdr* out){
-
-  int i = 0;
-  int index = 0;
-      DEBUG_PRINT(("________1_________\n"));
-  // Get the section index
-  for (i = 0; i < ehdr->e_shnum; i++)
-      if(strcmp(names[i], nameOfSection) == 0){
-              DEBUG_PRINT(("________1_%d_________\n", i));
-        index = i;
-      }
-
-      DEBUG_PRINT(("________2_________\n"));
-
-      DEBUG_PRINT(("Index is: %d", index));
-
-  // Get the pointer to the section
-
-  Elf64_Shdr* baseOfshdrArr = (void*)ehdr + ehdr->e_shoff;
-          DEBUG_PRINT(("________3_________\n"));
-
-          DEBUG_PRINT(("base pointer: %p\n", baseOfshdrArr));
-
-  *out = baseOfshdrArr[index];
-
-        DEBUG_PRINT(("________4_________\n"));
-
-        DEBUG_PRINT(("base pointer + index: %p\n", out));
-}
-
-
-/*
-  Section#: 1 .note.gnu.build-id
-  Section#: 2 .gnu.hash
-  Section#: 3 .dynsymP
-  Section#: 4 .dynstr
-  Section#: 5 .gnu.version
-  Section#: 6 .gnu.version_r
-  Section#: 7 .rela.dyn
-  Section#: 8 .rela.plt
-  Section#: 9 .init
-  Section#: 10 .plt
-  Section#: 11 .text
-  Section#: 12 .fini
-  Section#: 13 .eh_frame_hdr
-  Section#: 14 .eh_frame
-  Section#: 15 .init_array
-  Section#: 16 .fini_array
-  Section#: 17 .jcr
-  Section#: 18 .data.rel.ro
-  Section#: 19 .dynamic
-  Section#: 20 .got
-  Section#: 21 .got.plt
-  Section#: 22 .data
-  Section#: 23 .bss
-  Section#: 24 .comment
-  Section#: 25 .shstrtab
-  Section#: 26 .symtab
-  Section#: 27 .strtab
-
-*/
-
-
-/*
-  Mostly useful for debugging
-*/
-void printSectionNamesFromArray(Elf64_Ehdr* ehdr, char* sectNamePtrs[]){
-
-    printf("Beginning printing array of names\n");
-
-    int i = 0;
-    for (i = 0; i < ehdr->e_shnum; i++){
-        printf("Section#: %d %s\n",i, sectNamePtrs[i]);
-    }
-
-}
-
-
-
-
-void printSectionNames(Elf64_Ehdr* ehdr){
-
-
-      Elf64_Shdr* shdrs = (void*)ehdr + ehdr->e_shoff;
-      char* strs = (void*)ehdr + shdrs[ehdr->e_shstrndx].sh_offset; 
-      printf("%d\n", ehdr->e_shstrndx);
-
-      int i;
-
-      for (i = 0; i < ehdr->e_shnum; i++)
-      {
-        printf("Iteration: i = %d,  name = %s\n",i, strs + shdrs[i].sh_name);
-      }
-
-}
-
-/*
-  The second parameter char* sectNamePtrs
-*/
-
-void getSectionBaseAddrss(Elf64_Ehdr* ehdr, char* sectNamePtrs[]){
-
-
-      Elf64_Shdr* shdrs = (void*)ehdr + ehdr->e_shoff;
-      char* strs = (void*)ehdr + shdrs[ehdr->e_shstrndx].sh_offset; 
-
-      int k = 0;
-
-      for (k = 0; k < ehdr->e_shnum; k++){
-          DEBUG_PRINT(("___%d___\n", k));
-          sectNamePtrs[k] = strs + shdrs[k].sh_name;
-      }
 
 }
 
