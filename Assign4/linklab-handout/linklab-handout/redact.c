@@ -29,6 +29,10 @@ int map_dynsym_to_shndx(Elf64_Ehdr* ehdr,  int symbolIndex, char* nameOfSymSecti
 //int map_dynsym_to_shndx(Elf64_Ehdr* ehdr,  int symbolIndex);
 void printSectionHeaderNames(Elf64_Ehdr* ehdr);
 unsigned char* getMachineCodeOfSymbol(Elf64_Ehdr* ehdr, int symbol_index, char* nameOfSymSection);
+void printRelaInfo(Elf64_Ehdr* ehdr);
+void print_Sym_Rela_info(Elf64_Ehdr* ehdr);
+void print_single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index);
+void print_ins_info(Elf64_Ehdr* ehdr, instruction_t* ins);
 
 /*************************************************************/
 
@@ -37,22 +41,108 @@ void redact(Elf64_Ehdr *ehdr) {
      from here, instead of trying to put all the work in one
      function. */
 
+    // Initial information
+    print_dynsym_names(ehdr);
 
+    print_Sym_Rela_info(ehdr);
 
-   Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
-      int m, sym_arr_size = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+    printf("DEBUG 0\n");
+    char passCode = 'n';
+    int counter = 1;
+    int m = -1;
 
-      unsigned char* tempChar;
-      for (m = 0; m < sym_arr_size; m++) 
+    Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
+    Elf64_Sym* syms = AT_SEC(ehdr, dynsym_shdr);
+    int sym_arr_size = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+    code_t* code_ptr;
+    instruction_t ins;
+    instruction_t* ins_ptr = &ins;
+    Elf64_Sym* curr_Sym;
+    Elf64_Rela* curr_rela;
+
+    do
+    {
+
+      // Increment Symbol
+      m++;
+      curr_Sym = sym_by_index(ehdr, m, ".dynsym");
+      code_ptr = getMachineCodeOfSymbol(ehdr, m, ".dynsym");
+
+      // Check if is a function
+      if(ELF64_ST_TYPE(syms[m].st_info) == STT_FUNC)
       {
-        printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        M: %d\n", m);
+        print_single_dynsym_name(ehdr, m);
+        printf(": Is a function\n");
 
-          tempChar = getMachineCodeOfSymbol(ehdr, m, ".dynsym");
+        decode(&ins, code_ptr, curr_Sym->st_value);
+        print_ins_info(ehdr, &ins);
 
-          if(tempChar != NULL)
-            printf("Your byte from main: %02hhx\n\n", *tempChar);
-
+      }else
+      {
+        print_single_dynsym_name(ehdr, m);
+        printf(": Is NOT a function\n");
       }
+
+      // decode
+
+       // void decode(instruction_t *ins, code_t *code_ptr, Elf64_Addr code_addr);
+
+     
+
+      // Increment instruction
+
+      printf("IN: \n");
+      scanf("%c", &passCode);
+
+    } while('y' != passCode && m < sym_arr_size);
+
+
+}
+
+void print_ins_info(Elf64_Ehdr* ehdr, instruction_t* ins)
+{
+  printf("%s\n");
+  switch(ins->op)
+  {
+    case 0: printf("MOV_ADDR_TO_REG_OP");break;
+    case 1: printf("JMP_TO_ADDR_OP");break;
+    case 2: printf("MAYBE_JMP_TO_ADDR_OP");break;
+    case 3: printf("RET_OP");break;
+    case 4: printf("OTHER_OP");break;
+  }
+}
+
+void print_Sym_Rela_info(Elf64_Ehdr* ehdr)
+{
+
+  Elf64_Shdr* rela_dyn_shdr = section_by_name(ehdr, ".rela.dyn");
+  Elf64_Rela* relas = AT_SEC(ehdr, rela_dyn_shdr);
+
+  Elf64_Shdr* dyn_sym_shdr = section_by_name(ehdr, ".dynsym");
+  Elf64_Sym* Syms = AT_SEC(ehdr, dyn_sym_shdr);
+
+
+  int i, sym_index, count = rela_dyn_shdr->sh_size / sizeof(Elf64_Rela);
+  for (i = 0; i < count; i++) 
+  {
+    sym_index = ELF64_R_SYM(relas[i].r_info);
+    printf("%d -> ", sym_index);
+    print_single_dynsym_name(ehdr, sym_index);
+  }
+
+}
+
+
+void printRelaInfo(Elf64_Ehdr* ehdr)
+{
+
+  Elf64_Shdr *rela_dyn_shdr = section_by_name(ehdr, ".rela.dyn");
+  Elf64_Rela *relas = AT_SEC(ehdr, rela_dyn_shdr);
+
+  int i, count = rela_dyn_shdr->sh_size / sizeof(Elf64_Rela);
+  for (i = 0; i < count; i++) {
+    printf("%d\n", ELF64_R_SYM(relas[i].r_info));
+  }
 
 }
 
@@ -73,10 +163,10 @@ unsigned char* getMachineCodeOfSymbol(Elf64_Ehdr* ehdr, int symbol_index, char* 
 
         if(ELF64_ST_TYPE(Syms[symbol_index].st_info) == STT_FUNC)
         {
-            printf("Is a Function!\n");
+            //printf("Is a Function!\n");
                 
             j = map_dynsym_to_shndx(ehdr, symbol_index, nameOfSymSection);
-            printf("M:\t%d  j:\t%d  \n",symbol_index, j );
+            //printf("M:\t%d  j:\t%d  \n",symbol_index, j );
 
             code_ptr = AT_SEC(ehdr, shdrs + j) + ((Syms[symbol_index].st_value)-(shdrs[j].sh_addr));
 
@@ -95,14 +185,13 @@ unsigned char* getMachineCodeOfSymbol(Elf64_Ehdr* ehdr, int symbol_index, char* 
 
         }else
         {
-            printf(" ######   Not a Function!   #######\n");
+            //printf(" ######   Not a Function!   #######\n");
             j = map_dynsym_to_shndx(ehdr, symbol_index, nameOfSymSection);
-            printf("\nM:\t%d  j:\t%d  \n",symbol_index, j );
+            //printf("\nM:\t%d  j:\t%d  \n",symbol_index, j );
 
             return NULL;
 
         }
-
 
 }
 
@@ -148,7 +237,7 @@ Elf64_Sym* sym_by_index(Elf64_Ehdr* ehdr, int index, char* nameOfSymSection)
 
       }
 
-      printf("%s\n", strs + syms[index].st_name);
+      printf("%d: %s\n",index, strs + syms[index].st_name);
       return &syms[index];
 }
 
@@ -201,6 +290,19 @@ void print_dynsym_names(Elf64_Ehdr* ehdr)
       }
 }
 
+
+void print_single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index)
+{
+      Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
+      Elf64_Sym *syms = AT_SEC(ehdr, dynsym_shdr);
+      char *strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));
+      int count = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+
+      if(symbol_index < count)
+        printf("%s\n", strs + syms[symbol_index].st_name);
+      else
+        printf("Symbol index out of bounds\n");
+}
 
 Elf64_Shdr* section_by_index(Elf64_Ehdr* ehdr, int index)
 {
