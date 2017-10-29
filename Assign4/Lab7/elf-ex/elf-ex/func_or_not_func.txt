@@ -1,0 +1,143 @@
+.dynsym
+.dynsym
+.dynstr
+
+
+
+ ######   Not a Function!   #######
+
+M:	0  j:	0  
+.dynsym
+.dynstr
+
+
+
+ ######   Not a Function!   #######
+
+M:	1  j:	9  
+.dynsym
+.dynstr
+_ITM_deregisterTMCloneTable
+
+
+ ######   Not a Function!   #######
+
+M:	2  j:	0  
+.dynsym
+.dynstr
+__gmon_start__
+
+
+ ######   Not a Function!   #######
+
+M:	3  j:	0  
+.dynsym
+.dynstr
+_Jv_RegisterClasses
+
+
+ ######   Not a Function!   #######
+
+M:	4  j:	0  
+.dynsym
+.dynstr
+_ITM_registerTMCloneTable
+
+
+ ######   Not a Function!   #######
+
+M:	5  j:	0  
+Is a Function!
+.dynsym
+.dynstr
+__cxa_finalize
+
+
+
+M:	6  j:	0  
+.text Byte: 7f
+Is a Function!
+.dynsym
+.dynstr
+f0
+
+
+
+M:	7  j:	11  
+.text Byte: 85
+.dynsym
+.dynstr
+_edata
+
+
+ ######   Not a Function!   #######
+
+M:	8  j:	22  
+.dynsym
+.dynstr
+_end
+
+
+ ######   Not a Function!   #######
+
+M:	9  j:	23  
+.dynsym
+.dynstr
+a1
+
+
+ ######   Not a Function!   #######
+
+M:	10  j:	22  
+Is a Function!
+.dynsym
+.dynstr
+f1
+
+
+
+M:	11  j:	11  
+.text Byte: 83
+.dynsym
+.dynstr
+__bss_start
+
+
+ ######   Not a Function!   #######
+
+M:	12  j:	23  
+Is a Function!
+.dynsym
+.dynstr
+_init
+
+
+
+M:	13  j:	9  
+.text Byte: 48
+Is a Function!
+.dynsym
+.dynstr
+f2
+
+
+
+M:	14  j:	11  
+.text Byte: 31
+Is a Function!
+.dynsym
+.dynstr
+_fini
+
+
+
+M:	15  j:	12  
+.text Byte: 48
+.dynsym
+.dynstr
+a2
+
+
+ ######   Not a Function!   #######
+
+M:	16  j:	22  

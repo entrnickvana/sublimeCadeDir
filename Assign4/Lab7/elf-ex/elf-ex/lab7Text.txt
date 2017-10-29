@@ -1,0 +1,268 @@
+.dynsym
+.dynsym
+.dynstr
+
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+
+
+
+Sym Section Header Index: 9
+Sym shndx corresponds to section: .init
+.dynsym
+.dynstr
+_ITM_deregisterTMCloneTable
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+__gmon_start__
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+_Jv_RegisterClasses
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+_ITM_registerTMCloneTable
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+__cxa_finalize
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+f0
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+_edata
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+.dynsym
+.dynstr
+_end
+
+
+Sym Section Header Index: 23
+Sym shndx corresponds to section: .bss
+.dynsym
+.dynstr
+a1
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+.dynsym
+.dynstr
+f1
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+__bss_start
+
+
+Sym Section Header Index: 23
+Sym shndx corresponds to section: .bss
+.dynsym
+.dynstr
+_init
+
+
+Sym Section Header Index: 9
+Sym shndx corresponds to section: .init
+.dynsym
+.dynstr
+f2
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+_fini
+
+
+Sym Section Header Index: 12
+Sym shndx corresponds to section: .fini
+.dynsym
+.dynstr
+a2
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+.dynsym
+.dynsym
+.dynstr
+
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+
+
+
+Sym Section Header Index: 9
+Sym shndx corresponds to section: .init
+.dynsym
+.dynstr
+_ITM_deregisterTMCloneTable
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+__gmon_start__
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+_Jv_RegisterClasses
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+_ITM_registerTMCloneTable
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+__cxa_finalize
+
+
+Sym Section Header Index: 0
+Sym shndx corresponds to section: 
+.dynsym
+.dynstr
+f0
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+_edata
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+.dynsym
+.dynstr
+_end
+
+
+Sym Section Header Index: 23
+Sym shndx corresponds to section: .bss
+.dynsym
+.dynstr
+a1
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+.dynsym
+.dynstr
+f1
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+__bss_start
+
+
+Sym Section Header Index: 23
+Sym shndx corresponds to section: .bss
+.dynsym
+.dynstr
+_init
+
+
+Sym Section Header Index: 9
+Sym shndx corresponds to section: .init
+.dynsym
+.dynstr
+f2
+
+
+Sym Section Header Index: 11
+Sym shndx corresponds to section: .text
+.dynsym
+.dynstr
+_fini
+
+
+Sym Section Header Index: 12
+Sym shndx corresponds to section: .fini
+.dynsym
+.dynstr
+a2
+
+
+Sym Section Header Index: 22
+Sym shndx corresponds to section: .data
+
+.note.gnu.build-id
+.gnu.hash
+.dynsym
+.dynstr
+.gnu.version
+.gnu.version_r
+.rela.dyn
+.rela.plt
+.init
+.plt
+.text
+.fini
+.eh_frame_hdr
+.eh_frame
+.init_array
+.fini_array
+.jcr
+.data.rel.ro
+.dynamic
+.got
+.got.plt
+.data
+.bss
+.comment
+.shstrtab
+.symtab
+.strtab

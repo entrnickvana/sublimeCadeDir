@@ -219,6 +219,8 @@ Elf64_Sym* sym_by_name(Elf64_Ehdr* ehdr, char* symName, char* symSection)
 
 void print_dynsym_names(Elf64_Ehdr* ehdr)
 {
+
+    printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@   SYMBOL INFO   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
       Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
       Elf64_Sym *syms = AT_SEC(ehdr, dynsym_shdr);
       char *strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));
@@ -228,6 +230,7 @@ void print_dynsym_names(Elf64_Ehdr* ehdr)
       {
         printf("%s\n", strs + syms[i].st_name);
       }
+    printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@   SYMBOL INFO   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 }
 
 
@@ -256,7 +259,7 @@ Elf64_Shdr* section_by_name(Elf64_Ehdr* ehdr, char* section_header_name)
         {
            desiredSection =  &shdrs[i];
            index_of_desired_section = i;
- //          printf("%s\n", strs + shdrs[i].sh_name);           
+           printf("%s\n", strs + shdrs[i].sh_name);           
         }
     }
       
