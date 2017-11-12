@@ -30,25 +30,26 @@ int main(int argc, char **argv) {
 }
 
 static void run_script(script *scr) {
-  if (scr->num_groups == 1) {
-    run_group(&scr->groups[0]);
-  } else {
-    /* You'll have to make run_script do better than this */
-    fail("only 1 group supported");
-  }
+
+  int i, j;
+      for(i = 0; i < scr->num_groups; ++i)          //  RUN EACH GROUP
+        for(j = 1 ; j < scr->groups->repeats; ++j)   //  CALL REPEATS
+          run_group(scr->groups[i]);
 }
 
+/* REQUIREMENTS
+    1) Groups must finish consecutively
+    2) Group must start each command simultaneously whether AND/OR
+*/
 static void run_group(script_group *group) {
-  /* You'll have to make run_group do better than this, too */
-  if (group->repeats != 1)
-    fail("only repeat 1 supported");
 
-  if (group->num_commands == 1) {
-    run_command(&group->commands[0]);
-  } else {
-    /* And here */
-    fail("only 1 command supported");
-  }
+int i;
+  for(i = 0; i < group->num_commands; ++i) 
+    switch(group->mode)
+      case 0: run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+      case 1: fail("and not supported\n"); break;  //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+      case 2: fail("or not supported\n"); break;  //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+
 }
 
 /* This run_command function is a good start, but note that it runs
@@ -66,8 +67,8 @@ static void run_command(script_command *command) {
   if (command->output_to != NULL)
     fail("output to variable not supported");
 
-  argv = malloc(sizeof(char *) * (command->num_arguments + 2));
-  argv[0] = command->program;
+  argv = malloc(sizeof(char *) * (command->num_arguments + 2));  // dynamic allocation for script string args
+  argv[0] = command->program;  // dynamic allocation for script itself
   
   for (i = 0; i < command->num_arguments; i++) {
     if (command->arguments[i].kind == ARGUMENT_LITERAL)

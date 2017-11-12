@@ -42,13 +42,10 @@ Elf64_Shdr* section_runtime_base_addr(Elf64_Ehdr* ehdr, Elf64_Addr given_addr);
 Elf64_Shdr* section_base_addr(Elf64_Ehdr* ehdr, code_t* given_addr);
 void mov_addr_to_reg_func(Elf64_Ehdr* ehdr, instruction_t* ins, code_t* code_ptr, Elf64_Sym* curr_Sym);
 char* relaName(Elf64_Ehdr* ehdr, int rela_index);
-void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* ins_ptr2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, char* passCodeDecode);
+void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* ins_ptr2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, int* symbolM_index);
 void other_op_func(Elf64_Ehdr* ehdr, instruction_t* ins, code_t* code_ptr, Elf64_Sym* curr_Sym);
-
-
-
-
-
+void inspectFunctions(Elf64_Ehdr* ehdr,  instruction_t* ins, instruction_t* ins_ptr2, code_t* code_ptr, code_t* temp_code_ptr, Elf64_Sym* curr_Sym, int* symbolM_index);
+char* single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index);
 
 
 /*************************************************************/
@@ -64,10 +61,6 @@ void redact(Elf64_Ehdr *ehdr) {
     printSectionHeaderNames(ehdr);
     print_dynsym_names(ehdr, ".symtab", ".strtab");
     print_dynsym_names(ehdr, ".dynsym", ".dynstr");    
-
-
-
-
 
     print_Sym_Rela_info(ehdr, ".rela.dyn");
     print_Sym_Rela_info(ehdr, ".rela.plt");    
@@ -89,9 +82,6 @@ void redact(Elf64_Ehdr *ehdr) {
     int override = 0;
 
 
-
-
-
     Elf64_Shdr* dynsym_shdr = section_by_name(ehdr, ".dynsym");
     Elf64_Shdr* dynstr_shdr = section_by_name(ehdr, ".dynstr");
     Elf64_Shdr* reladyn_shdr = section_by_name(ehdr, ".rela.dyn");
@@ -108,8 +98,6 @@ void redact(Elf64_Ehdr *ehdr) {
     int search_result = 0;
     
     Elf64_Rela* rela_arr;
-    
-    
 
     code_t* code_ptr;
     instruction_t temp_ins;
@@ -119,6 +107,9 @@ void redact(Elf64_Ehdr *ehdr) {
 
     Elf64_Sym* curr_Sym;
     Elf64_Rela* curr_rela;
+    char c;
+    char* c_ptr = &c;
+
 
     do
     {
@@ -127,92 +118,21 @@ void redact(Elf64_Ehdr *ehdr) {
       m++;
       curr_Sym = sym_by_index(ehdr, m, ".dynsym");
       code_ptr = getMachineCodeOfSymbol(ehdr, m, ".dynsym");
+      print_single_dynsym_name(ehdr, m);
 
-      // Check if is a function
 
-                
-
-          print_single_dynsym_name(ehdr, m);
 
       if(ELF64_ST_TYPE(syms[m].st_info) == STT_FUNC)
       {
+
           printf(": Is a function\n");
+    
+            print_ins(code_ptr, ins);
+            decode(ins, code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
 
-          printf("DO YOU WANT TO ENTER THIS FUNC: (e for yes, any key for no)\n");
-          scanf("\n%c", &passCodeDecode);    
+            inspectFunctions(ehdr, ins, ins_ptr2, code_ptr, temp_code_ptr, curr_Sym, &m);
 
-           if(ELF64_ST_TYPE(syms[m].st_info) == STT_FUNC && passCodeDecode == 'e')
-           {
-
-
-
-                print_ins(code_ptr, ins);
-                decode(ins, code_ptr, curr_Sym->st_value);
-
-                print_ins_info(ehdr, ins);
-
-                printf("DO YOU WANT TO PERSUE THIS INSTRUCTION?  (YES: p, NO: any key)\n");
-                scanf("%c", &passCodeDecode);
-
-                  do
-                  {
-                      if(override == 1)
-                      {
-                        printf("RETURNing\n");
-                        override = 0;
-                        break;
-                      }
-
-                      printf("DO YOU WANT TO PERSUE THIS INSTRUCTION?  (YES: p, NO: any key)\n");
-                      scanf("%c", &passCodeDecode);
-
-                      if(passCodeDecode != 'p')
-                      {
-                        code_ptr = code_ptr + ins->length;
-                      }
-                      else
-                      switch(ins->op)
-                      {
-                            case 0: //MOV_ADDR_TO_REG_OP,                       
-                            // Check address for dynamic symbol
-                              mov_addr_to_reg_func(ehdr, ins, code_ptr, curr_Sym);
-                              printf("COMPLETED MOV_ADDR_TO_REG AND INCREMENTED CODE_PTR\n");
-
-                            break;                                       
-                            case 1: //JMP_TO_ADDR_OP,                           
-                              printf("Entered JMP_TO_ADDR_OP\n");                
-                                                          
-                            break;                                   
-                            case 2: //MAYBE_JMP_TO_ADDR_OP,                     
-                                maybe_jmp_to_addr_func(ehdr,ins_ptr2, ins, temp_code_ptr,  code_ptr, curr_Sym, &passCodeDecode);
-                              //void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* temp_ins2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, char* passCodeDecode)
-
-                            break;                                         
-                            case 3: //RET_OP,                                   
-                              printf("Entered RET_OP\n--------------------------\n");
-                              override = 1;
-
-
-
-                            break;                           
-                            case 4: //OTHER_OP,                    
-                            other_op_func(ehdr, ins, code_ptr, curr_Sym);
-                            break;                             
-                      }
-
-
-
-                      print_ins(code_ptr, ins);
-                      decode(ins, code_ptr, curr_Sym->st_value);
-                      print_ins_info(ehdr, ins);
-
-                      printf("CONTINUE READING IN_FUNC: ");
-                      print_single_dynsym_name(ehdr, m);
-                      printf("\t (yes: any key, no: x) :\n");
-                      scanf("%c", &passCodeDecode);
-
-                    } while('x' != passCodeDecode && override != 1);
-            }
 
       }else
       {
@@ -226,34 +146,171 @@ void redact(Elf64_Ehdr *ehdr) {
 
       // Increment instruction
 
-      printf("CONTINIE IN: ");
-      print_single_dynsym_name(ehdr, m);
-      printf("\n");
-
-      scanf("%c", &passCode);
-
-    } while('y' != passCode && m < sym_arr_size);
+    } while(m -1 < sym_arr_size);
 
 
 }
 
-void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* ins_ptr2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, char* passCodeDecode)
+void inspectFunctions(Elf64_Ehdr* ehdr_,  instruction_t* ins_, instruction_t* ins_ptr2_, code_t* code_ptr_, code_t* temp_code_ptr_, Elf64_Sym* curr_Sym_, int* symbolM_index_)
+{
+
+      Elf64_Ehdr* ehdr = ehdr_;
+      instruction_t temp_ins;
+      instruction_t temp_ins2;
+      instruction_t temp_ins3;      
+      instruction_t temp_ins4;            
+      instruction_t* ins = ins_;
+      instruction_t* ins_ptr2 = &temp_ins2;
+      instruction_t* ins_ptr3 = &temp_ins3;
+
+      instruction_t* ins_ptr4 = &temp_ins4;
+
+      code_t* code_ptr = code_ptr_;
+      code_t* temp_code_ptr;
+      Elf64_Sym* curr_Sym = curr_Sym_;
+      int* symbolM_index = symbolM_index_;
+      code_t* another_code_ptr;
+
+      switch(ins->op)
+      {
+            case 0: //MOV_ADDR_TO_REG_OP,                       
+            // Check address for dynamic symbol
+              mov_addr_to_reg_func(ehdr, ins, code_ptr, curr_Sym);
+              printf("COMPLETED MOV_ADDR_TO_REG AND INCREMENTED CODE_PTR\n");
+
+            code_ptr = code_ptr + ins->length;
+
+            print_ins(code_ptr, ins); 
+            decode(ins, code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
+
+            inspectFunctions(ehdr, ins, ins_ptr2, code_ptr, temp_code_ptr, curr_Sym, symbolM_index);
+  
+
+            break;                                       
+            case 1: //JMP_TO_ADDR_OP,                           
+              printf("Entered JMP_TO_ADDR_OP\n");                
+
+              Elf64_Addr jmp_addr;
+              Elf64_Shdr* relaplt_shdr = section_by_name(ehdr, ".rela.plt");
+              Elf64_Rela* rela_arr = AT_SEC(ehdr, relaplt_shdr);
+
+
+              int relaplt_count = relaplt_shdr->sh_size / sizeof(Elf64_Rela);
+              int match_index = -1;
+              int i, sym_index;
+
+              Elf64_Addr given_addr = ins->jmp_to_addr.addr;
+
+              for (i = 0; i < relaplt_count; i++) 
+              {
+
+                if(rela_arr[i].r_offset == given_addr)
+                {
+                  match_index = i;
+                  printf("\n\n---------------------------------\nINDEX: %d\tMATCH !!!!!!!!!!!!!!!!\n---------------------------------\n\n", i);
+                  sym_index = ELF64_R_SYM(rela_arr[i].r_info);
+                  print_single_dynsym_name(ehdr, sym_index);
+                  if(get_secrecy_level(relaName(ehdr, i)) > get_secrecy_level(single_dynsym_name(ehdr, *symbolM_index)) )
+                  {
+                    printf("\n----------------------------------\nILLEGAL ACCESS\n----------------------------------\nrela\n");
+                    relaName(ehdr, i);
+                    printf("Was accessed by:\n");
+                    single_dynsym_name(ehdr, *symbolM_index);
+
+                    replace_with_crash(code_ptr, ins);
+
+
+                  }
+                  match_index = i;
+                }
+                else
+                {
+                  printf("index: %dno match\n", i);
+                  print_single_dynsym_name(ehdr, sym_index);
+                }
+
+                if(i < 0)
+                {
+                  printf("\n\n\t\t##############  NO MATCHES\n\n");
+                  break;
+                }
+
+
+
+
+              }
+
+            code_ptr = code_ptr + ins->length;
+
+            print_ins(code_ptr, ins); 
+            decode(ins, code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
+
+
+
+            inspectFunctions(ehdr, ins, ins_ptr2, code_ptr, temp_code_ptr, curr_Sym, symbolM_index);
+
+
+
+            break;                                   
+            case 2: //MAYBE_JMP_TO_ADDR_OP,        
+
+            another_code_ptr = code_ptr + ins->length;
+
+            maybe_jmp_to_addr_func(ehdr,ins_ptr2, ins, temp_code_ptr,  code_ptr, curr_Sym, symbolM_index);
+              //void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* temp_ins2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, char* passCodeDecode)
+            code_ptr = code_ptr + ins->length;
+
+            print_ins(code_ptr, ins); 
+            decode(ins_ptr3, another_code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
+
+            inspectFunctions(ehdr, ins_ptr3,ins_ptr4 , another_code_ptr, temp_code_ptr, curr_Sym, symbolM_index);            
+
+            
+            break;                                         
+            case 3: //RET_OP,                                   
+            printf("Entered RET_OP\n--------------------------\n");
+
+
+
+            print_ins(code_ptr, ins); 
+            decode(ins, code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
+            
+
+            break;                           
+            case 4: //OTHER_OP,                    
+            other_op_func(ehdr, ins, code_ptr, curr_Sym);
+
+            code_ptr = code_ptr + ins->length;
+
+            print_ins(code_ptr, ins); 
+            decode(ins, code_ptr, curr_Sym->st_value);
+            print_ins_info(ehdr, ins);
+
+
+            inspectFunctions(ehdr, ins, ins_ptr2, code_ptr, temp_code_ptr, curr_Sym, symbolM_index);
+
+            break;                             
+      }
+
+
+
+}
+
+
+
+void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* ins_ptr2, instruction_t* ins, code_t* temp_code_ptr,  code_t* code_ptr, Elf64_Sym* curr_Sym, int* symbolM_index)
 {
     Elf64_Addr base_run_addr;
     Elf64_Shdr* temp_Shdr;
 
     printf("Entered MAYBE_JMP_TO_ADDR_OP\n-------------------------------------------------\n\n");
 
-    // extract given address
-    printf("DO YOU WANT TO TAKE THIS JUMP? (j for yes, any key for no\n");
-    scanf("%c", passCodeDecode);
 
-    if(*passCodeDecode != 'j')
-    {
-      printf("SKIP JUMP, INCREMENT INS USING CODE_PTR\n");
-      code_ptr = code_ptr+ins->length;
-      return;
-    }
+    // extract given address
 
     printf("Given ADDR\n------------\nPTR: %p\tllu: %llu\t\n", (void*)(ins->maybe_jmp_to_addr.addr), (unsigned long long)(ins->maybe_jmp_to_addr.addr));
 
@@ -270,18 +327,16 @@ void maybe_jmp_to_addr_func(Elf64_Ehdr* ehdr, instruction_t* ins_ptr2, instructi
 
     // DECODE JUMPED TO INSTRUCTION
     printf("DECODE THE JUMPED TO INSTRUCTION\n-------------------------------------\n");
-    decode(ins_ptr2, temp_code_ptr, ins->maybe_jmp_to_addr.addr);
-    print_ins(temp_code_ptr, ins_ptr2);
-    print_ins_info(ehdr, ins_ptr2);
 
-    if(ins_ptr2->op == 3){
-    printf("DECODE INS AT JUMP WAS RET, IGNORE\n");
-      return;
-    }
+
+
+
+    
+
+  
 
 
 }
-
 void other_op_func(Elf64_Ehdr* ehdr, instruction_t* ins, code_t* code_ptr, Elf64_Sym* curr_Sym)
 {
 
@@ -348,7 +403,11 @@ void mov_addr_to_reg_func(Elf64_Ehdr* ehdr, instruction_t* ins, code_t* code_ptr
 
         if(secrecy_callee > secrecy_caller)
         {
+
+          printf("\n--------------------------\n REPLACE WITH CRASH!!!!!!!!!!!!!!!!!!! \n--------------------------\n\n");
+
           replace_with_crash(code_ptr, ins);
+          //replace_with_crash(code_ptr, ins);
         }
 
         code_ptr = code_ptr + ins->length;
@@ -707,6 +766,8 @@ Elf64_Sym* sym_by_name(Elf64_Ehdr* ehdr, char* symName, char* symSection)
       return &syms[sym_index];
 }
 
+
+
 void print_dynsym_names(Elf64_Ehdr* ehdr, char* symTypeName, char* symStrSectionName)
 {
 
@@ -727,6 +788,34 @@ void print_dynsym_names(Elf64_Ehdr* ehdr, char* symTypeName, char* symStrSection
 
 void print_single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index)
 {
+
+      Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
+      Elf64_Sym *syms = AT_SEC(ehdr, dynsym_shdr);
+      char *strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));
+      int count = dynsym_shdr->sh_size / sizeof(Elf64_Sym);
+
+
+      if(symbol_index < count)
+        printf("%s", strs + syms[symbol_index].st_name);
+      else
+      {
+
+
+        Elf64_Shdr *dynsym_shdr2 = section_by_name(ehdr, ".symtab");
+        Elf64_Sym *syms2 = AT_SEC(ehdr, dynsym_shdr2);
+        char *strs2 = AT_SEC(ehdr, section_by_name(ehdr, ".strtab"));
+        int count2 = dynsym_shdr2->sh_size / sizeof(Elf64_Sym);
+        if(symbol_index < count2)
+        {
+              printf("%s", strs2 + syms2[symbol_index].st_name);
+        }
+        else
+        printf("Symbol index out of bounds");
+      }
+}
+
+char* single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index)
+{
       Elf64_Shdr *dynsym_shdr = section_by_name(ehdr, ".dynsym");
       Elf64_Sym *syms = AT_SEC(ehdr, dynsym_shdr);
       char *strs = AT_SEC(ehdr, section_by_name(ehdr, ".dynstr"));
@@ -736,6 +825,8 @@ void print_single_dynsym_name(Elf64_Ehdr* ehdr, int symbol_index)
         printf("%s", strs + syms[symbol_index].st_name);
       else
         printf("Symbol index out of bounds");
+
+      return strs + syms[symbol_index].st_name;
 }
 
 Elf64_Shdr* section_by_index(Elf64_Ehdr* ehdr, int index)

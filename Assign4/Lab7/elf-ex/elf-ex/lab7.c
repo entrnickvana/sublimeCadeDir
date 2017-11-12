@@ -259,7 +259,7 @@ Elf64_Shdr* section_by_name(Elf64_Ehdr* ehdr, char* section_header_name)
         {
            desiredSection =  &shdrs[i];
            index_of_desired_section = i;
-           printf("%s\n", strs + shdrs[i].sh_name);           
+ //          printf("%s\n", strs + shdrs[i].sh_name);           
         }
     }
       

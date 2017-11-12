@@ -172,7 +172,8 @@ void decode(instruction_t *ins, code_t *code_ptr, Elf64_Addr code_addr)
   }
 
   fprintf(stderr, "unrecognized instruction starts %x\n", code_ptr[0]);
-  exit(1);
+  //exit(1);
+  return;
 }
 
 void replace_with_crash(code_t *code_ptr, instruction_t *ins)

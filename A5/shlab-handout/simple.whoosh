@@ -1,0 +1,2 @@
+/bin/ls -l => $files
+$files => /usr/bin/wc -l
