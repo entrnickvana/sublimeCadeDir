@@ -7,7 +7,7 @@
 #include "ast.h"
 #include "fail.h"
 
-#define DEBUG_1 1
+//#define DEBUG_1 1
 
 #ifdef DEBUG_1
 # define DEBUG_PRINT1(x) printf x
@@ -15,9 +15,9 @@
 # define DEBUG_PRINT1(x) do {} while (0)
 #endif
 
-#define DEBUG_2 1
+//#define DEBUG_2
 #ifdef DEBUG_2
-# define DEBUG_PRINT2(x) printf x
+# define DEBUG_PRINT2(x) fprintf x
 #else
 # define DEBUG_PRINT2(x) do {} while (0)
 #endif
@@ -25,6 +25,7 @@
 static void run_script(script *scr);
 static void run_group(script_group *group);
 static void run_command(script_command *command, int* pid);
+static void run_command_dbg(script_command *command, int* pid, int child_num);
 static void set_var(script_var *var, int new_value);
 
 /* You probably shouldn't change main at all. */
@@ -51,20 +52,63 @@ static void run_script(script *scr) {
             run_group(&scr->groups[i]);
 }
 
+
 /* REQUIREMENTS
     1) Groups must finish consecutively
     2) Group must start each command simultaneously whether AND/OR
 */
 static void run_group(script_group *group) {
 
-  int i, j, pid, status;
+  int i, j, child_n = 0;
   for(i = 0; i < group->num_commands; ++i)
-    for(j = 0; j < group->repeats; ++j)   //  CALL REPEATS      
+    for(j = 0; j < group->repeats; ++j){   //  CALL REPEATS       
+      int pid, status;
       switch(group->mode){
-        case 0: run_command(&group->commands[i], &pid); waitpid(pid, &status, 0); break;
+        case 0: run_command_dbg(&group->commands[i], &pid, ++child_n); waitpid(pid, &status, 0); break;
+//        case 0: run_command_dbg(&group->commands[i], &pid, ++child_n); waitpid(pid, &status, 0); break;        
         case 1: fail("and not supported\n"); break;   //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
         case 2: fail("or not supported\n"); break;    //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
       }  
+    }
+//  waitpid(-1, &status, 0);
+  DEBUG_PRINT2((stderr, "Parent Exit: %d %d\n", i, j));
+}
+
+static void run_command_dbg(script_command *command, int* pid, int child_num){
+
+  int i;
+  if((*pid == fork()) != 0)
+    return; 
+
+  DEBUG_PRINT2((stderr,"Child_n: %d\n", child_num));
+
+  const char **argv;
+
+  if (command->pid_to != NULL)
+    fail("setting process ID variable not supported");
+  if (command->input_from != NULL)
+    fail("input from variable not supported");
+  if (command->output_to != NULL)
+    fail("output to variable not supported");
+
+  argv = malloc(sizeof(char *) * (command->num_arguments + 2));  // dynamic allocation for script string args
+  argv[0] = command->program;  // dynamic allocation for script itself
+  
+  for (i = 0; i < command->num_arguments; i++) 
+  {
+    if (command->arguments[i].kind == ARGUMENT_LITERAL)
+      argv[i+1] = command->arguments[i].u.literal;
+    else
+      argv[i+1] = command->arguments[i].u.var->value;
+  }
+  
+  argv[command->num_arguments + 1] = NULL;
+
+  DEBUG_PRINT2((stderr, "Child Exit: %d\n", *pid));
+
+  Execve(argv[0], (char * const *)argv, environ);
+
+  free(argv);
 }
 
 /* This run_command function is a good start, but note that it runs
@@ -97,6 +141,8 @@ static void run_command(script_command *command, int* pid) {
   }
   
   argv[command->num_arguments + 1] = NULL;
+
+  DEBUG_PRINT2((stderr, "Child Exit: %d\n", *pid));
 
   Execve(argv[0], (char * const *)argv, environ);
 
