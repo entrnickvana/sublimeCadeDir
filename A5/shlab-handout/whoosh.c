@@ -7,9 +7,24 @@
 #include "ast.h"
 #include "fail.h"
 
+#define DEBUG_1 1
+
+#ifdef DEBUG_1
+# define DEBUG_PRINT1(x) printf x
+#else
+# define DEBUG_PRINT1(x) do {} while (0)
+#endif
+
+#define DEBUG_2 1
+#ifdef DEBUG_2
+# define DEBUG_PRINT2(x) printf x
+#else
+# define DEBUG_PRINT2(x) do {} while (0)
+#endif
+
 static void run_script(script *scr);
 static void run_group(script_group *group);
-static void run_command(script_command *command);
+static void run_command(script_command *command, int* pid);
 static void set_var(script_var *var, int new_value);
 
 /* You probably shouldn't change main at all. */
@@ -31,10 +46,9 @@ int main(int argc, char **argv) {
 
 static void run_script(script *scr) {
 
-  int i, j;
+  int i;
       for(i = 0; i < scr->num_groups; ++i)          //  RUN EACH GROUP
-        for(j = 1 ; j < scr->groups->repeats; ++j)   //  CALL REPEATS
-          run_group(scr->groups[i]);
+            run_group(&scr->groups[i]);
 }
 
 /* REQUIREMENTS
@@ -43,22 +57,26 @@ static void run_script(script *scr) {
 */
 static void run_group(script_group *group) {
 
-int i;
-  for(i = 0; i < group->num_commands; ++i) 
-    switch(group->mode)
-      case 0: run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
-      case 1: fail("and not supported\n"); break;  //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
-      case 2: fail("or not supported\n"); break;  //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
-
+  int i, j, pid, status;
+  for(i = 0; i < group->num_commands; ++i)
+    for(j = 0; j < group->repeats; ++j)   //  CALL REPEATS      
+      switch(group->mode){
+        case 0: run_command(&group->commands[i], &pid); waitpid(pid, &status, 0); break;
+        case 1: fail("and not supported\n"); break;   //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+        case 2: fail("or not supported\n"); break;    //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+      }  
 }
 
 /* This run_command function is a good start, but note that it runs
    the command as a replacement for the `whoosh` script, instead of
    creating a new process. */
+static void run_command(script_command *command, int* pid) {
 
-static void run_command(script_command *command) {
-  const char **argv;
   int i;
+  if((*pid == fork()) != 0)
+    return; 
+
+  const char **argv;
 
   if (command->pid_to != NULL)
     fail("setting process ID variable not supported");
@@ -70,7 +88,8 @@ static void run_command(script_command *command) {
   argv = malloc(sizeof(char *) * (command->num_arguments + 2));  // dynamic allocation for script string args
   argv[0] = command->program;  // dynamic allocation for script itself
   
-  for (i = 0; i < command->num_arguments; i++) {
+  for (i = 0; i < command->num_arguments; i++) 
+  {
     if (command->arguments[i].kind == ARGUMENT_LITERAL)
       argv[i+1] = command->arguments[i].u.literal;
     else
