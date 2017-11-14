@@ -26,6 +26,8 @@ static void run_script(script *scr);
 static void run_group(script_group *group);
 static void run_command(script_command *command);
 static void set_var(script_var *var, int new_value);
+static void printArgInfo(script_argument *arg);
+static void write_string_to(int fd, char *str);
 
 /* You probably shouldn't change main at all. */
 
@@ -45,10 +47,16 @@ int main(int argc, char **argv) {
 }
 
 static void run_script(script *scr) {
-
   int i;
       for(i = 0; i < scr->num_groups; ++i)          //  RUN EACH GROUP
             run_group(&scr->groups[i]);
+}
+
+static void printArgInfo(script_argument *arg){
+  //if(arg->kind == 0)
+//    DEBUG_PRINT1(("Lit: %s\n", strcat(arg->u.literal, str_temp)));
+  
+//  DEBUG_PRINT1(("Var: name: %s, value: %s\n", strcat(arg->u.var->name, str_temp), strcat(arg->u.var->value, str_temp)));
 }
 
 
@@ -65,13 +73,12 @@ static void run_group(script_group *group) {
       if(pid == 0)
         run_command(&group->commands[i]);
       else
-        { 
-          int status;
+        { int status;
           switch(group->mode)
             {
               case 0: waitpid(pid, &status, 0); break;
-              case 1: fail("and not supported\n"); break;   //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
-              case 2: fail("or not supported\n"); break;    //(pid = fork()) == 0 ? run_command(&group->commands[j]) : waitpid(pid, &status, 0); break;
+              case 1: fail("and not supported\n"); break; //waitpid(pid, &status, 0); break;
+              case 2: fail("or not supported\n"); break;
             }
         }
     }
@@ -84,35 +91,50 @@ static void run_group(script_group *group) {
 static void run_command(script_command *command) {
 
   int i;
- 
   const char **argv;
 
-  if (command->pid_to != NULL)
-    fail("setting process ID variable not supported");
-  if (command->input_from != NULL)
-    fail("input from variable not supported");
-  if (command->output_to != NULL)
-    fail("output to variable not supported");
+    if(command->pid_to != NULL){
+      set_var(command->pid_to, getpid());
+      printf("Name: %s\n", command->pid_to->name);
+      printf("Name: %s\n", command->pid_to->name);
+    } 
+
+   if (command->input_from != NULL)
+   {
+      int fd[2];
+
+      pipe(fd);
+
+   }
+
+   if (command->output_to != NULL)
+    fail("out not sup\n");
 
   argv = malloc(sizeof(char *) * (command->num_arguments + 2));  // dynamic allocation for script string args
   argv[0] = command->program;  // dynamic allocation for script itself
-  
+
   for (i = 0; i < command->num_arguments; i++) 
   {
-    if (command->arguments[i].kind == ARGUMENT_LITERAL)
+    if(command->arguments[i].kind == ARGUMENT_LITERAL)
       argv[i+1] = command->arguments[i].u.literal;
     else
       argv[i+1] = command->arguments[i].u.var->value;
-  }
-  
-  argv[command->num_arguments + 1] = NULL;
 
-  if(getppid() == 1)
-    printf("Child: %d failed to be harvested\n",getpid());
+  }
+
+  argv[command->num_arguments + 1] = NULL;
 
   Execve(argv[0], (char * const *)argv, environ);
 
   free(argv);
+}
+
+
+static void write_string_to(int fd, char *str) {
+  size_t len = strlen(str);
+  ssize_t wrote = Write(fd, str, len);
+  if (wrote != len)
+    app_error("didn't write all expected bytes");
 }
 
 /* You'll likely want to use this set_var function for converting a
